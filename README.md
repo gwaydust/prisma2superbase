@@ -17,7 +17,7 @@ A zero-config CLI that reads `schema.prisma` and outputs:
 
 ## Week 1 Milestones (Nov 3–9)
 - [ ] Finalize ICP & one-liner
-- [ ] Build landing page + Gumroad buy button ($29)
+- [ ] Build landing page + buy button ($29)
 - [ ] Write cold outreach script; identify 50 prospects
 - [ ] Send 20 cold DMs/emails; target 3+ discovery calls
 - [ ] Set up China dev environment (VPN, GitHub, Vercel, Supabase CLI)
@@ -47,5 +47,10 @@ prisma-to-supabase/
 ## Competitive Advantage
 - Prisma-native (reads schema directly, no manual mapping)
 - Supabase-specific output (RLS, Realtime, Auth)
-- China-friendly (no cloud dependency, runs locally)
+- Runs locally (no cloud dependency)
 - Open-core: CLI free, premium templates/templates paid
+
+## Repository
+- **GitHub:** https://github.com/chiwai/prisma2superbase
+- **Landing Page:** https://chiwai.github.io/prisma2superbase/
+- **Issues:** https://github.com/chiwai/prisma2superbase/issues
