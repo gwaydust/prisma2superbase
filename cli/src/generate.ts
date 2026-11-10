@@ -1,6 +1,5 @@
 import { promises as fs } from 'fs';
 import * as path from 'path';
-import { PrismaClient } from '@prisma/client';
 import chalk from 'chalk';
 
 export interface GenerateOptions {
@@ -72,8 +71,10 @@ export async function generateMigrations(options: GenerateOptions): Promise<void
   // 5. TypeScript types
   if (options.types) {
     const typesTs = generateTypescriptTypes(models);
+    const typesDir = path.join(outputDir, '..', 'types');
+    await fs.mkdir(typesDir, { recursive: true });
     await fs.writeFile(
-      path.join(outputDir, '..', 'types', 'database.ts'),
+      path.join(typesDir, 'database.ts'),
       typesTs
     );
     console.log(chalk.green(`✓ Generated TypeScript types`));
@@ -278,7 +279,7 @@ function generateAuthHelpers(models: PrismaModel[]): string {
   sql += `CREATE OR REPLACE FUNCTION current_user_id()\n`;
   sql += `RETURNS uuid LANGUAGE sql STABLE AS $$\n`;
   sql += `  SELECT auth.uid();\n`;
-  sql += `$`;\n\n`;
+  sql += `$$\n\n`;
 
   return sql;
 }

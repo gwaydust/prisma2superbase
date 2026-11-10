@@ -22,8 +22,9 @@ program
       console.log(chalk.green('🚀 Generating Supabase migrations...'));
       await generateMigrations(options);
       console.log(chalk.green('✅ Done! Check your output directory.'));
-    } catch (error) {
-      console.error(chalk.red('❌ Error:'), error.message);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error(chalk.red('❌ Error:'), message);
       process.exit(1);
     }
   });
