@@ -95,6 +95,8 @@ interface PrismaField {
   isRequired: boolean;
   isArray: boolean;
   relationName?: string;
+  hasDefault?: boolean;
+  defaultValue?: string;
 }
 
 interface PrismaRelation {
@@ -149,9 +151,38 @@ function parseFields(body: string): PrismaField[] {
     // Clean type
     let cleanType = type.replace(/^\??/, '').replace(/\[\]$/, '').replace(/^\?/, '');
 
+    // Detect UUID: @id @default(uuid()) on String type
+    const isUuid = cleanType === 'String' && trimmed.includes('@id') && trimmed.includes('@default(uuid())');
+    if (isUuid) {
+      cleanType = 'UUID';
+    }
+
     // Check for relation
     const relationMatch = trimmed.match(/@relation\s*\(\s*name:\s*"([^"]+)"\s*\)/);
     const relationName = relationMatch ? relationMatch[1] : undefined;
+
+    // Check for default value
+    let hasDefault = false;
+    let defaultValue: string | undefined;
+    const defaultIndex = trimmed.indexOf('@default(');
+    if (defaultIndex !== -1) {
+      let parenCount = 0;
+      let endIndex = -1;
+      for (let i = defaultIndex + '@default('.length; i < trimmed.length; i++) {
+        if (trimmed[i] === '(') parenCount++;
+        else if (trimmed[i] === ')') {
+          if (parenCount === 0) {
+            endIndex = i;
+            break;
+          }
+          parenCount--;
+        }
+      }
+      if (endIndex !== -1) {
+        hasDefault = true;
+        defaultValue = trimmed.slice(defaultIndex + '@default('.length, endIndex);
+      }
+    }
 
     fields.push({
       name,
@@ -160,7 +191,9 @@ function parseFields(body: string): PrismaField[] {
       isUnique,
       isRequired,
       isArray,
-      relationName
+      relationName,
+      hasDefault,
+      defaultValue
     });
   }
 
@@ -204,6 +237,23 @@ function generateTableSQL(model: PrismaModel): string {
       colDef += ' NOT NULL';
     }
 
+    // Handle default values
+    if (field.hasDefault && field.defaultValue) {
+      if (field.defaultValue === 'uuid()') {
+        colDef += ` DEFAULT gen_random_uuid()`;
+      } else if (field.defaultValue === 'now()') {
+        colDef += ` DEFAULT now()`;
+      } else if (field.defaultValue === 'autoincrement()') {
+        // Handled by SERIAL/BIGSERIAL - but we use UUID instead
+      } else if (field.defaultValue.startsWith('"') && field.defaultValue.endsWith('"')) {
+        colDef += ` DEFAULT ${field.defaultValue}`;
+      } else if (!isNaN(Number(field.defaultValue))) {
+        colDef += ` DEFAULT ${field.defaultValue}`;
+      } else if (field.defaultValue === 'true' || field.defaultValue === 'false') {
+        colDef += ` DEFAULT ${field.defaultValue}`;
+      }
+    }
+
     columns.push(colDef);
   }
 
@@ -229,6 +279,7 @@ function mapPrismaTypeToPostgres(prismaType: string): string {
     'Json': 'JSONB',
     'Bytes': 'BYTEA',
     'Decimal': 'DECIMAL',
+    'UUID': 'UUID',
   };
   return typeMap[prismaType] || 'TEXT';
 }
@@ -327,6 +378,7 @@ function mapPrismaTypeToTypeScript(prismaType: string): string {
     'Json': 'Record<string, unknown>',
     'Bytes': 'Uint8Array',
     'Decimal': 'number',
+    'UUID': 'string',
   };
   return typeMap[prismaType] || 'unknown';
 }
