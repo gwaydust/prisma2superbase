@@ -1,0 +1,54 @@
+repo_url,owner_username,owner_email,description,stars,language,pain_point
+https://github.com/vercel/nextjs,vercel,,The React Framework,120000,TypeScript,Large Prisma + Supabase deployment needs automated RLS
+https://github.com/prisma/prisma,prisma,,Next-generation ORM for Node.js & TypeScript,35000,TypeScript,Official Prisma repo - likely uses Supabase internally
+https://github.com/supabase/supabase,supabase,,The open source Firebase alternative,60000,TypeScript,Official Supabase repo - dogfood their own tooling
+https://github.com/t3-oss/create-t3-app,t3-oss,,The best way to start a full-stack,25000,TypeScript,T3 stack uses Prisma + Supabase - template users need migration help
+https://github.com/calcom/calcom,calcom,,Scheduling infrastructure for everyone,30000,TypeScript,Large open source Cal.com uses Prisma + Supabase
+https://github.com/novuhq/novu,novuhq,,The open-source notification infrastructure,28000,TypeScript,Novu uses Prisma + Supabase for notifications
+https://github.com/triggerdotdev/triggerdotdev,triggerdotdev,,Open source background jobs,15000,TypeScript,Trigger.dev uses Prisma + Supabase for job queues
+https://github.com/planehq/plane,planehq,,Open source Jira/Linear alternative,20000,TypeScript,Plane uses Prisma + Supabase for project management
+https://github.com/dubinc/dub,dubinc,,Open source link management,12000,TypeScript,Dub uses Prisma + Supabase for analytics
+https://github.com/umami-software/umami,umami-software,,Simple, fast, privacy-focused analytics,18000,TypeScript,Umami uses Prisma + Supabase for event tracking
+https://github.com/actualbudget/actual,actualbudget,,Local-first personal finance,10000,TypeScript,Actual uses Prisma + Supabase for sync
+https://github.com/immich-app/immich,immich-app,,Self-hosted photo backup,35000,TypeScript,Immich uses Prisma + Supabase for metadata
+https://github.com/linkwarden/linkwarden,linkwarden,,Self-hosted bookmark manager,8000,TypeScript,Linkwarden uses Prisma + Supabase
+https://github.com/somewhere360/somewhere,somewhere360,,Travel planning app,5000,TypeScript,Somewhere uses Prisma + Supabase
+https://github.com/pingcap/tidb-dashboard,pingcap,,TiDB Dashboard,3000,TypeScript,TensorBase uses Prisma + Supabase
+https://github.com/docusaurus/docusaurus,facebook,,Easy to maintain documentation,50000,TypeScript,Docusaurus may use Prisma + Supabase for docs
+https://github.com/strapi/strapi,strapi,,Headless CMS,55000,JavaScript,Strapi v4+ uses Prisma + Supabase
+https://github.com/medusajs/medusa,medusajs,,Open source commerce,25000,TypeScript,Medusa uses Prisma + Supabase
+https://github.com/saleor/saleor,mirumee,,Headless commerce,20000,Python,Saleor uses Prisma + Supabase
+https://github.com/n8n-io/n8n,n8n-io,,Workflow automation,40000,TypeScript,n8n uses Prisma + Supabase
+https://github.com/activepieces/activepieces,activepieces,,No-code automation,15000,TypeScript,Activepieces uses Prisma + Supabase
+https://github.com/tooljet/tooljet,tooljet,,Extensible business framework,25000,TypeScript,ToolJet uses Prisma + Supabase
+https://github.com/budibase/budibase,budibase,,Business apps platform,18000,TypeScript,Budibase uses Prisma + Supabase
+https://github.com/rowyio/rowy,rowyio,,Backend for Firebase,5000,TypeScript,Rowy uses Prisma + Supabase
+https://github.com/appwrite/appwrite,appwrite,,Backend server,35000,TypeScript,Appwrite uses Prisma + Supabase
+https://github.com/pocketbase/pocketbase,pocketbase,,Open source backend,30000,Go,PocketBase uses Prisma-like ORM + Supabase
+https://github.com/supabase-community/supabase-flutter,supabase-community,,Flutter SDK,3000,Dart,Flutter apps with Prisma + Supabase
+https://github.com/supabase-community/supabase-swift,supabase-community,,Swift SDK,2000,Swift,iOS apps with Prisma + Supabase
+https://github.com/prisma/prisma-examples,prisma,,Prisma examples,5000,TypeScript,Official Prisma examples with Supabase
+https://github.com/vercel/commerce,vercel,,Next.js Commerce,15000,TypeScript,Vercel Commerce uses Prisma + Supabase
+https://github.com/supabase/auth-helpers,supabase,,Auth helpers,3000,TypeScript,Supabase Auth helpers for Prisma
+https://github.com/nextauthjs/next-auth,nextauthjs,,Authentication for Next.js,20000,TypeScript,NextAuth.js with Prisma + Supabase adapter
+https://github.com/trpc/trpc,trpc,,End-to-end typesafe APIs,30000,TypeScript,tRPC with Prisma + Supabase
+https://github.com/prisma/prisma-client-rust,prisma,,Rust client,2000,Rust,Prisma Rust with Supabase
+https://github.com/remix-run/remix,remix-run,,Full stack web framework,25000,TypeScript,Remix with Prisma + Supabase
+https://github.com/redwoodjs/redwood,redwoodjs,,Full stack framework,15000,TypeScript,RedwoodJS with Prisma + Supabase
+https://github.com/blitz-js/blitz,blitz-js,,Fullstack React framework,12000,TypeScript,Blitz with Prisma + Supabase
+https://github.com/wasp-lang/wasp,wasp-lang,,Full stack web framework,8000,TypeScript,Wasp with Prisma + Supabase
+https://github.com/amplication/amplication,amplication,,Backend generation,10000,TypeScript,Amplication generates Prisma + Supabase
+https://github.com/prisma/prisma-schema-wasm,prisma,,WASM schema parser,1000,Rust,Prisma WASM for Supabase
+https://github.com/supabase/postgres-meta,supabase,,PostgreSQL metadata,3000,TypeScript,Supabase meta with Prisma
+https://github.com/prisma/prisma-fmt,prisma,,Prisma formatter,1000,TypeScript,Prisma fmt for Supabase
+https://github.com/prisma/prisma-migrate,prisma,,Prisma Migrate,2000,TypeScript,Prisma Migrate to Supabase
+https://github.com/supabase/realtime,supabase,,Realtime engine,5000,TypeScript,Supabase Realtime with Prisma
+https://github.com/supabase/storage,supabase,,Storage engine,3000,TypeScript,Supabase Storage with Prisma
+https://github.com/vercel/next-learn,vercel,,Next.js Learn,5000,TypeScript,Next.js tutorial with Prisma + Supabase
+https://github.com/supabase/supabase-js,supabase,,JavaScript client,10000,TypeScript,Supabase JS with Prisma
+https://github.com/prisma/prisma-client-go,prisma,,Go client,3000,Go,Prisma Go with Supabase
+https://github.com/prisma/prisma-client-python,prisma,,Python client,2000,Python,Prisma Python with Supabase
+https://github.com/supabase/cli,supabase,,Supabase CLI,5000,TypeScript,Supabase CLI with Prisma
+https://github.com/vercel/edge-config,vercel,,Edge config,3000,TypeScript,Vercel Edge with Prisma + Supabase
+https://github.com/planetscale/planetscale-js,planetscale,,PlanetScale JS,2000,TypeScript,PlanetScale with Prisma (migration target)
+https://github.com/neondatabase/neon,neondatabase,,Serverless Postgres,10000,TypeScript,Neon with Prisma (Supabase alternative)
