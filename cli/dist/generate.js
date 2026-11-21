@@ -40,285 +40,310 @@ exports.generateMigrations = generateMigrations;
 const fs_1 = require("fs");
 const path = __importStar(require("path"));
 const chalk_1 = __importDefault(require("chalk"));
+// ---------------------------------------------------------------------------
+// Entry point
+// ---------------------------------------------------------------------------
 async function generateMigrations(options) {
     const schemaPath = path.resolve(options.schema);
     const outputDir = path.resolve(options.output);
     console.log(chalk_1.default.gray(`Reading schema from: ${schemaPath}`));
     console.log(chalk_1.default.gray(`Writing migrations to: ${outputDir}`));
-    // Read and parse the Prisma schema
     const schemaContent = await fs_1.promises.readFile(schemaPath, 'utf-8');
     const models = parsePrismaSchema(schemaContent);
-    console.log(chalk_1.default.gray(`Found ${models.length} models: ${models.map(m => m.name).join(', ')}`));
-    // Ensure output directory exists
+    console.log(chalk_1.default.gray(`Found ${models.length} models: ${models.map((m) => m.name).join(', ')}`));
     await fs_1.promises.mkdir(outputDir, { recursive: true });
-    // Generate migrations
     const timestamp = new Date().toISOString().replace(/[-:]/g, '').split('.')[0];
-    // 1. Main schema migration
-    const schemaSql = generateSchemaSQL(models);
-    await fs_1.promises.writeFile(path.join(outputDir, `${timestamp}_initial_schema.sql`), schemaSql);
-    console.log(chalk_1.default.green(`✓ Generated initial schema migration`));
-    // 2. RLS policies
+    await fs_1.promises.writeFile(path.join(outputDir, `${timestamp}_initial_schema.sql`), generateSchemaSQL(models));
+    console.log(chalk_1.default.green('✓ Generated initial schema migration'));
     if (options.rls) {
-        const rlsSql = generateRLSPolicies(models);
-        await fs_1.promises.writeFile(path.join(outputDir, `${timestamp}_rls_policies.sql`), rlsSql);
-        console.log(chalk_1.default.green(`✓ Generated RLS policies`));
+        await fs_1.promises.writeFile(path.join(outputDir, `${timestamp}_rls_policies.sql`), generateRLSPolicies(models));
+        console.log(chalk_1.default.green('✓ Generated RLS policies'));
     }
-    // 3. Realtime setup
     if (options.realtime) {
-        const realtimeSql = generateRealtimeSetup(models);
-        await fs_1.promises.writeFile(path.join(outputDir, `${timestamp}_realtime_setup.sql`), realtimeSql);
-        console.log(chalk_1.default.green(`✓ Generated Realtime setup`));
+        await fs_1.promises.writeFile(path.join(outputDir, `${timestamp}_realtime_setup.sql`), generateRealtimeSetup(models));
+        console.log(chalk_1.default.green('✓ Generated Realtime setup'));
     }
-    // 4. Auth helpers
     if (options.auth) {
-        const authSql = generateAuthHelpers(models);
-        await fs_1.promises.writeFile(path.join(outputDir, `${timestamp}_auth_helpers.sql`), authSql);
-        console.log(chalk_1.default.green(`✓ Generated Auth helpers`));
+        await fs_1.promises.writeFile(path.join(outputDir, `${timestamp}_auth_helpers.sql`), generateAuthHelpers(models));
+        console.log(chalk_1.default.green('✓ Generated Auth helpers'));
     }
-    // 5. TypeScript types
     if (options.types) {
-        const typesTs = generateTypescriptTypes(models);
         const typesDir = path.join(outputDir, '..', 'types');
         await fs_1.promises.mkdir(typesDir, { recursive: true });
-        await fs_1.promises.writeFile(path.join(typesDir, 'database.ts'), typesTs);
-        console.log(chalk_1.default.green(`✓ Generated TypeScript types`));
+        await fs_1.promises.writeFile(path.join(typesDir, 'database.ts'), generateTypescriptTypes(models));
+        console.log(chalk_1.default.green('✓ Generated TypeScript types'));
     }
 }
-// Simplified Prisma schema parser
+// ---------------------------------------------------------------------------
+// Parser
+// ---------------------------------------------------------------------------
+const SCALAR_TYPES = new Set([
+    'String', 'Int', 'BigInt', 'Float', 'Boolean', 'DateTime',
+    'Json', 'Bytes', 'Decimal', 'UUID', 'Unsupported',
+]);
+/** Extract the raw text of every `model X { ... }` block. */
+function extractModels(content) {
+    const out = [];
+    const re = /model\s+(\w+)\s*\{([\s\S]*?)\n\}/g;
+    let m;
+    while ((m = re.exec(content)) !== null) {
+        out.push({ name: m[1], body: m[2] });
+    }
+    return out;
+}
 function parsePrismaSchema(content) {
-    const models = [];
-    const modelRegex = /model\s+(\w+)\s*{([^}]+)}/g;
-    let match;
-    while ((match = modelRegex.exec(content)) !== null) {
-        const modelName = match[1];
-        const modelBody = match[2];
-        const fields = parseFields(modelBody);
-        const relations = parseRelations(modelBody, modelName);
-        models.push({
-            name: modelName,
-            fields,
-            relations
-        });
-    }
-    return models;
+    const raw = extractModels(content);
+    const modelNames = new Set(raw.map((r) => r.name));
+    return raw.map((r) => {
+        const { fields, relations } = parseModelBody(r.body, modelNames);
+        return { name: r.name, fields, relations };
+    });
 }
-function parseFields(body) {
+function parseModelBody(body, modelNames) {
     const fields = [];
-    const lines = body.split('\n');
-    for (const line of lines) {
-        const trimmed = line.trim();
-        if (!trimmed || trimmed.startsWith('//') || trimmed.startsWith('@@'))
+    const relations = [];
+    for (const rawLine of body.split('\n')) {
+        const line = rawLine.trim();
+        if (!line || line.startsWith('//') || line.startsWith('@@') || line.startsWith('}'))
             continue;
-        const parts = trimmed.split(/\s+/);
+        const parts = line.split(/\s+/);
         if (parts.length < 2)
             continue;
         const name = parts[0];
-        const type = parts[1];
-        const isId = trimmed.includes('@id');
-        const isUnique = trimmed.includes('@unique') || isId;
-        const isRequired = !type.endsWith('?');
-        const isArray = type.startsWith('[') || type.endsWith('[]');
-        // Clean type
-        let cleanType = type.replace(/^\??/, '').replace(/\[\]$/, '').replace(/^\?/, '');
-        // Detect UUID: @id @default(uuid()) on String type
-        const isUuid = cleanType === 'String' && trimmed.includes('@id') && trimmed.includes('@default(uuid())');
-        if (isUuid) {
-            cleanType = 'UUID';
-        }
-        // Check for relation
-        const relationMatch = trimmed.match(/@relation\s*\(\s*name:\s*"([^"]+)"\s*\)/);
-        const relationName = relationMatch ? relationMatch[1] : undefined;
-        // Check for default value
+        const typeRaw = parts[1];
+        const isArray = typeRaw.endsWith('[]');
+        const baseType = typeRaw.replace(/^\?/, '').replace(/\[\]$/, '').replace(/\?$/, '');
+        const isOptional = typeRaw.startsWith('?') || typeRaw.endsWith('?');
+        const isRelation = isArray || modelNames.has(baseType);
+        // default value (handles nested parens like @default(uuid()))
         let hasDefault = false;
         let defaultValue;
-        const defaultIndex = trimmed.indexOf('@default(');
-        if (defaultIndex !== -1) {
-            let parenCount = 0;
-            let endIndex = -1;
-            for (let i = defaultIndex + '@default('.length; i < trimmed.length; i++) {
-                if (trimmed[i] === '(')
-                    parenCount++;
-                else if (trimmed[i] === ')') {
-                    if (parenCount === 0) {
-                        endIndex = i;
+        const di = line.indexOf('@default(');
+        if (di !== -1) {
+            let depth = 0;
+            let end = -1;
+            for (let i = di + '@default('.length; i < line.length; i++) {
+                if (line[i] === '(')
+                    depth++;
+                else if (line[i] === ')') {
+                    if (depth === 0) {
+                        end = i;
                         break;
                     }
-                    parenCount--;
+                    depth--;
                 }
             }
-            if (endIndex !== -1) {
+            if (end !== -1) {
                 hasDefault = true;
-                defaultValue = trimmed.slice(defaultIndex + '@default('.length, endIndex);
+                defaultValue = line.slice(di + '@default('.length, end);
             }
+        }
+        if (isRelation) {
+            const relationAttr = line.match(/@relation\s*\(([^)]*(?:\([^)]*\)[^)]*)*)\)/);
+            let fkFields = [];
+            let fkReferences = [];
+            let onDelete;
+            if (relationAttr) {
+                const f = relationAttr[1].match(/fields:\s*\[([^\]]+)\]/);
+                const r = relationAttr[1].match(/references:\s*\[([^\]]+)\]/);
+                const od = relationAttr[1].match(/onDelete:\s*(\w+)/);
+                if (f)
+                    fkFields = f[1].split(',').map((s) => s.trim());
+                if (r)
+                    fkReferences = r[1].split(',').map((s) => s.trim());
+                if (od)
+                    onDelete = od[1];
+            }
+            relations.push({ field: name, targetModel: baseType, isArray, fkFields, fkReferences, onDelete });
+            continue; // relation fields never become columns
+        }
+        // scalar
+        let cleanType = baseType;
+        if (cleanType === 'String' && line.includes('@id') && line.includes('@default(uuid())')) {
+            cleanType = 'UUID';
         }
         fields.push({
             name,
             type: cleanType,
-            isId,
-            isUnique,
-            isRequired,
+            isId: line.includes('@id'),
+            isUnique: line.includes('@unique') || line.includes('@id'),
+            isRequired: !isOptional && !isArray,
             isArray,
-            relationName,
+            isRelation: false,
             hasDefault,
-            defaultValue
+            defaultValue,
         });
     }
-    return fields;
+    return { fields, relations };
 }
-function parseRelations(body, modelName) {
-    const relations = [];
-    // This is a simplified parser - in production, use @prisma/sdk
-    return relations;
+// ---------------------------------------------------------------------------
+// SQL generation
+// ---------------------------------------------------------------------------
+/** Map a model name to the FK columns that reference it, per model. */
+function buildFkIndex(model) {
+    const map = new Map();
+    for (const rel of model.relations) {
+        for (let i = 0; i < rel.fkFields.length; i++) {
+            const col = rel.fkFields[i];
+            const ref = rel.fkReferences[i] ?? 'id';
+            map.set(col, { target: rel.targetModel, ref, onDelete: rel.onDelete });
+        }
+    }
+    return map;
 }
 function generateSchemaSQL(models) {
-    let sql = `-- Initial schema migration\n-- Generated by prisma-to-supabase\n\n`;
+    let sql = '-- Initial schema migration\n-- Generated by prisma-to-supabase\n\n';
     for (const model of models) {
         sql += generateTableSQL(model);
         sql += '\n';
     }
+    // Foreign keys are emitted inline in CREATE TABLE above; add indexes after.
+    for (const model of models) {
+        const fk = buildFkIndex(model);
+        for (const col of fk.keys()) {
+            sql += `CREATE INDEX "idx_${model.name.toLowerCase()}_${col}" ON "${model.name.toLowerCase()}" ("${col}");\n`;
+        }
+    }
+    if (sql.endsWith('\n\n'))
+        sql = sql.slice(0, -1);
     return sql;
 }
 function generateTableSQL(model) {
-    let sql = `CREATE TABLE "${model.name.toLowerCase()}" (\n`;
-    const columns = [];
+    const table = model.name.toLowerCase();
+    const fk = buildFkIndex(model);
+    const cols = [];
     for (const field of model.fields) {
-        if (field.isArray)
-            continue; // Skip array fields (handled via relations)
-        const pgType = mapPrismaTypeToPostgres(field.type);
-        let colDef = `  "${field.name}" ${pgType}`;
-        if (field.isId) {
+        let colDef = `  "${field.name}" ${pgType(field)}`;
+        if (field.isId)
             colDef += ' PRIMARY KEY';
-        }
-        if (field.isUnique && !field.isId) {
+        if (field.isUnique && !field.isId)
             colDef += ' UNIQUE';
-        }
-        if (field.isRequired) {
+        if (field.isRequired)
             colDef += ' NOT NULL';
+        colDef += defaultClause(field);
+        const foreign = fk.get(field.name);
+        if (foreign) {
+            colDef += ` REFERENCES "${foreign.target.toLowerCase()}"("${foreign.ref}")`;
+            if (foreign.onDelete)
+                colDef += ` ON DELETE ${foreign.onDelete.toUpperCase()}`;
         }
-        // Handle default values
-        if (field.hasDefault && field.defaultValue) {
-            if (field.defaultValue === 'uuid()') {
-                colDef += ` DEFAULT gen_random_uuid()`;
-            }
-            else if (field.defaultValue === 'now()') {
-                colDef += ` DEFAULT now()`;
-            }
-            else if (field.defaultValue === 'autoincrement()') {
-                // Handled by SERIAL/BIGSERIAL - but we use UUID instead
-            }
-            else if (field.defaultValue.startsWith('"') && field.defaultValue.endsWith('"')) {
-                colDef += ` DEFAULT ${field.defaultValue}`;
-            }
-            else if (!isNaN(Number(field.defaultValue))) {
-                colDef += ` DEFAULT ${field.defaultValue}`;
-            }
-            else if (field.defaultValue === 'true' || field.defaultValue === 'false') {
-                colDef += ` DEFAULT ${field.defaultValue}`;
-            }
-        }
-        columns.push(colDef);
+        cols.push(colDef);
     }
-    sql += columns.join(',\n');
-    sql += '\n);\n';
-    // Indexes for foreign keys
-    for (const relation of model.relations) {
-        sql += `CREATE INDEX "idx_${model.name.toLowerCase()}_${relation.fields.join('_')}" ON "${model.name.toLowerCase()}" ("${relation.fields.join('", "')}");\n`;
-    }
-    return sql;
+    return `CREATE TABLE "${table}" (\n${cols.join(',\n')}\n);\n`;
 }
-function mapPrismaTypeToPostgres(prismaType) {
-    const typeMap = {
-        'String': 'TEXT',
-        'Int': 'INTEGER',
-        'BigInt': 'BIGINT',
-        'Float': 'DOUBLE PRECISION',
-        'Boolean': 'BOOLEAN',
-        'DateTime': 'TIMESTAMPTZ',
-        'Json': 'JSONB',
-        'Bytes': 'BYTEA',
-        'Decimal': 'DECIMAL',
-        'UUID': 'UUID',
+function pgType(field) {
+    if (field.hasDefault && field.defaultValue === 'autoincrement()') {
+        return field.type === 'BigInt' ? 'BIGINT GENERATED BY DEFAULT AS IDENTITY' : 'INTEGER GENERATED BY DEFAULT AS IDENTITY';
+    }
+    const map = {
+        String: 'TEXT', Int: 'INTEGER', BigInt: 'BIGINT', Float: 'DOUBLE PRECISION',
+        Boolean: 'BOOLEAN', DateTime: 'TIMESTAMPTZ', Json: 'JSONB', Bytes: 'BYTEA',
+        Decimal: 'DECIMAL', UUID: 'UUID',
     };
-    return typeMap[prismaType] || 'TEXT';
+    return map[field.type] ?? 'TEXT';
+}
+function defaultClause(field) {
+    if (!field.hasDefault || !field.defaultValue)
+        return '';
+    const d = field.defaultValue;
+    if (d === 'uuid()')
+        return ' DEFAULT gen_random_uuid()';
+    if (d === 'now()')
+        return ' DEFAULT now()';
+    if (d === 'autoincrement()')
+        return '';
+    if (d === 'cuid()' || d === 'ulid()')
+        return ''; // generated client-side
+    if (d.startsWith('"') && d.endsWith('"'))
+        return ` DEFAULT ${d}`;
+    if (d === 'true' || d === 'false')
+        return ` DEFAULT ${d}`;
+    if (!isNaN(Number(d)))
+        return ` DEFAULT ${d}`;
+    return '';
+}
+// ---------------------------------------------------------------------------
+// RLS / Realtime / Auth
+// ---------------------------------------------------------------------------
+/** Find the column most likely to hold the owner's user id. */
+function ownerColumn(model) {
+    const candidates = ['user_id', 'userId', 'author_id', 'authorId', 'owner_id', 'ownerId', 'created_by', 'createdBy'];
+    for (const c of candidates) {
+        if (model.fields.some((f) => f.name === c))
+            return c;
+    }
+    // fall back to any FK that points at a model named User
+    for (const rel of model.relations) {
+        if (rel.targetModel.toLowerCase() === 'user' && rel.fkFields.length)
+            return rel.fkFields[0];
+    }
+    return null;
 }
 function generateRLSPolicies(models) {
-    let sql = `-- Row Level Security Policies\n-- Generated by prisma-to-supabase\n\n`;
+    let sql = '-- Row Level Security Policies\n-- Generated by prisma-to-supabase\n\n';
     for (const model of models) {
-        const tableName = model.name.toLowerCase();
-        sql += `ALTER TABLE "${tableName}" ENABLE ROW LEVEL SECURITY;\n\n`;
-        // Default policy: users can only access their own data (if there's a userId field)
-        const hasUserId = model.fields.some(f => f.name === 'userId' || f.name === 'user_id');
-        if (hasUserId) {
-            sql += `CREATE POLICY "Users can view own ${model.name}" ON "${tableName}"\n`;
-            sql += `  FOR SELECT USING (auth.uid() = user_id);\n\n`;
-            sql += `CREATE POLICY "Users can insert own ${model.name}" ON "${tableName}"\n`;
-            sql += `  FOR INSERT WITH CHECK (auth.uid() = user_id);\n\n`;
-            sql += `CREATE POLICY "Users can update own ${model.name}" ON "${tableName}"\n`;
-            sql += `  FOR UPDATE USING (auth.uid() = user_id);\n\n`;
-            sql += `CREATE POLICY "Users can delete own ${model.name}" ON "${tableName}"\n`;
-            sql += `  FOR DELETE USING (auth.uid() = user_id);\n\n`;
+        const table = model.name.toLowerCase();
+        sql += `ALTER TABLE "${table}" ENABLE ROW LEVEL SECURITY;\n\n`;
+        const col = ownerColumn(model);
+        if (col) {
+            const label = `Users can manage own ${model.name}`;
+            sql += `CREATE POLICY "${label} select" ON "${table}" FOR SELECT USING (auth.uid() = ${col});\n`;
+            sql += `CREATE POLICY "${label} insert" ON "${table}" FOR INSERT WITH CHECK (auth.uid() = ${col});\n`;
+            sql += `CREATE POLICY "${label} update" ON "${table}" FOR UPDATE USING (auth.uid() = ${col});\n`;
+            sql += `CREATE POLICY "${label} delete" ON "${table}" FOR DELETE USING (auth.uid() = ${col});\n\n`;
+        }
+        else {
+            sql += `-- No owner column detected on "${table}" — add custom policies here.\n\n`;
         }
     }
     return sql;
 }
 function generateRealtimeSetup(models) {
-    let sql = `-- Realtime Publication Setup\n-- Generated by prisma-to-supabase\n\n`;
-    sql += `-- Enable realtime for all tables\n`;
-    sql += `ALTER PUBLICATION supabase_realtime ADD TABLE `;
-    sql += models.map(m => `"${m.name.toLowerCase()}"`).join(', ');
-    sql += `;\n\n`;
-    return sql;
+    const tables = models.map((m) => `"${m.name.toLowerCase()}"`);
+    return `-- Realtime Publication Setup\n-- Generated by prisma-to-supabase\n\nALTER PUBLICATION supabase_realtime ADD TABLE ${tables.join(', ')};\n`;
 }
-function generateAuthHelpers(models) {
-    let sql = `-- Auth Integration Helpers\n-- Generated by prisma-to-supabase\n\n`;
-    // Helper function to get current user's data
-    sql += `CREATE OR REPLACE FUNCTION current_user_id()\n`;
-    sql += `RETURNS uuid LANGUAGE sql STABLE AS $$\n`;
-    sql += `  SELECT auth.uid();\n`;
-    sql += `$$\n\n`;
-    return sql;
+function generateAuthHelpers(_models) {
+    return `-- Auth Integration Helpers\n-- Generated by prisma-to-supabase\n\n`
+        + `CREATE OR REPLACE FUNCTION public.current_user_id()\n`
+        + `RETURNS uuid LANGUAGE sql STABLE AS $$\n  SELECT auth.uid();\n$$;\n\n`
+        + `CREATE OR REPLACE FUNCTION public.is_service_role()\n`
+        + `RETURNS boolean LANGUAGE sql STABLE AS $$\n  SELECT (auth.jwt() ->> 'role') = 'service_role';\n$$;\n`;
+}
+// ---------------------------------------------------------------------------
+// TypeScript types
+// ---------------------------------------------------------------------------
+function tsType(field) {
+    const map = {
+        String: 'string', Int: 'number', BigInt: 'bigint', Float: 'number',
+        Boolean: 'boolean', DateTime: 'Date', Json: 'Record<string, unknown>',
+        Bytes: 'Uint8Array', Decimal: 'number', UUID: 'string',
+    };
+    return map[field.type] ?? 'unknown';
 }
 function generateTypescriptTypes(models) {
-    let ts = `// Database types generated by prisma-to-supabase\n// DO NOT EDIT MANUALLY\n\n`;
+    const byName = new Map(models.map((m) => [m.name, m]));
+    let ts = '// Database types generated by prisma-to-supabase\n// DO NOT EDIT MANUALLY\n\n';
     for (const model of models) {
         ts += `export interface ${model.name} {\n`;
-        for (const field of model.fields) {
-            const tsType = mapPrismaTypeToTypeScript(field.type);
-            const optional = !field.isRequired ? '?' : '';
-            const array = field.isArray ? '[]' : '';
-            ts += `  ${field.name}${optional}: ${tsType}${array};\n`;
+        for (const f of model.fields) {
+            ts += `  ${f.name}${f.isRequired ? '' : '?'}: ${tsType(f)};\n`;
         }
-        ts += `}\n\n`;
+        for (const rel of model.relations) {
+            const target = byName.get(rel.targetModel);
+            const name = target ? rel.targetModel : rel.targetModel;
+            ts += `  ${rel.field}: ${name}${rel.isArray ? '[]' : ''};\n`;
+        }
+        ts += '}\n\n';
     }
-    // Database schema type
-    ts += `export interface Database {\n`;
-    ts += `  public: {\n`;
-    ts += `    Tables: {\n`;
+    ts += 'export interface Database {\n  public: {\n    Tables: {\n';
     for (const model of models) {
         ts += `      ${model.name.toLowerCase()}: {\n`;
         ts += `        Row: ${model.name};\n`;
-        ts += `        Insert: Omit<${model.name}, 'id' | 'createdAt' | 'updatedAt'>;\n`;
+        ts += `        Insert: Omit<${model.name}, 'id'>;\n`;
         ts += `        Update: Partial<${model.name}>;\n`;
-        ts += `      };\n`;
+        ts += '      };\n';
     }
-    ts += `    };\n`;
-    ts += `  };\n`;
-    ts += `}\n`;
+    ts += '    };\n  };\n}\n';
     return ts;
-}
-function mapPrismaTypeToTypeScript(prismaType) {
-    const typeMap = {
-        'String': 'string',
-        'Int': 'number',
-        'BigInt': 'bigint',
-        'Float': 'number',
-        'Boolean': 'boolean',
-        'DateTime': 'Date',
-        'Json': 'Record<string, unknown>',
-        'Bytes': 'Uint8Array',
-        'Decimal': 'number',
-        'UUID': 'string',
-    };
-    return typeMap[prismaType] || 'unknown';
 }
 //# sourceMappingURL=generate.js.map
