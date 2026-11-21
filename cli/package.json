@@ -9,8 +9,11 @@
   "scripts": {
     "build": "tsc",
     "dev": "ts-node src/cli.ts",
-    "test": "jest",
-    "prepublishOnly": "npm run build"
+    "verify:local": "npm run build && python verify_local.py",
+    "verify:real": "python verify_real_schemas.py",
+    "verify": "npm run verify:local && npm run verify:real",
+    "test": "npm run verify:local",
+    "prepublishOnly": "npm run build && npm run verify:local"
   },
   "keywords": [
     "prisma",
