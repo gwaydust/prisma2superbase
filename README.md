@@ -77,5 +77,5 @@ supabase db push
 
 ## Repository
 - **GitHub:** https://github.com/gwaydust/prisma2superbase
-- **Landing Page:** https://gwaydust.github.io/prisma2superbase/
+- **Landing Page:** https://supabase.waisway.com/
 - **Issues:** https://github.com/gwaydust/prisma2superbase/issues

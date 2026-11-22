@@ -244,7 +244,7 @@ export interface Database {
             <li>All future updates included</li>
             <li>No subscription, no seat limits</li>
         </ul>
-        <!-- TODO: swap #waitlist back to the Creem checkout URL once the product page is live -->
+        <!-- Checkout switches on when CREEM_PRODUCT_URL is set in the script below. -->
         <a href="#waitlist" class="btn btn-primary" style="width:100%;justify-content:center">Join the Waitlist</a>
     </div>
 </section>
@@ -278,6 +278,20 @@ export interface Database {
 // Until then the form degrades to a "star the repo" call to action.
 var WAITLIST_ENDPOINT = '';
 var WAITLIST_KEY = '';
+
+// Creem payment link — copy it from the Creem dashboard (product → Share →
+// copy link). Format: https://www.creem.io/payment/prod_...
+// Creem has no @handle route, so a creem.io/@yourstore URL will always 404.
+// Leave empty to keep the waitlist CTA. Fill it in and both primary buttons
+// switch to the live checkout.
+var CREEM_PRODUCT_URL = '';
+
+if (CREEM_PRODUCT_URL) {
+    document.querySelectorAll('a[href="#waitlist"].btn-primary').forEach(function (a) {
+        a.href = CREEM_PRODUCT_URL;
+        a.textContent = 'Buy $29 — Lifetime Access';
+    });
+}
 
 document.getElementById('waitlistForm').addEventListener('submit', function(e){
     e.preventDefault();
