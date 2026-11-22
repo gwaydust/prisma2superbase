@@ -73,6 +73,13 @@ def main():
     # --- RLS ---
     check('RLS enabled on tables', sql.count('CREATE TABLE') == rls.count('ENABLE ROW LEVEL SECURITY'))
     check('RLS policies use auth.uid()', 'auth.uid()' in rls)
+    # Quoted, case-sensitive owner columns — unquoted camelCase folds to lowercase
+    # and the policy would reference a column that does not exist.
+    check('RLS owner column quoted', '"userId"' in rls and '"authorId"' in rls)
+    check('RLS casts uuid to text for TEXT owner columns',
+          'auth.uid()::text = "userId"' in rls and 'auth.uid()::text = "authorId"' in rls)
+    check('no unquoted owner column in policy',
+          not re.search(r'auth\.uid\(\)(?:::text)? = (?!")', rls))
 
     # --- Realtime / Auth ---
     check('Realtime publication updated', 'ALTER PUBLICATION supabase_realtime ADD TABLE' in rt)

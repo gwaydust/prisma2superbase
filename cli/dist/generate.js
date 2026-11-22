@@ -287,10 +287,18 @@ function generateRLSPolicies(models) {
         const col = ownerColumn(model);
         if (col) {
             const label = `Users can manage own ${model.name}`;
-            sql += `CREATE POLICY "${label} select" ON "${table}" FOR SELECT USING (auth.uid() = ${col});\n`;
-            sql += `CREATE POLICY "${label} insert" ON "${table}" FOR INSERT WITH CHECK (auth.uid() = ${col});\n`;
-            sql += `CREATE POLICY "${label} update" ON "${table}" FOR UPDATE USING (auth.uid() = ${col});\n`;
-            sql += `CREATE POLICY "${label} delete" ON "${table}" FOR DELETE USING (auth.uid() = ${col});\n\n`;
+            // Columns are emitted as quoted, case-sensitive identifiers. Referencing the
+            // owner column unquoted makes Postgres fold it to lowercase (authorId ->
+            // authorid) and the policy fails. auth.uid() returns uuid, so cast to text
+            // when the owner column is TEXT to avoid "operator does not exist: uuid = text".
+            const ownerField = model.fields.find((f) => f.name === col);
+            const compare = ownerField && pgType(ownerField) === 'UUID'
+                ? `auth.uid() = "${col}"`
+                : `auth.uid()::text = "${col}"`;
+            sql += `CREATE POLICY "${label} select" ON "${table}" FOR SELECT USING (${compare});\n`;
+            sql += `CREATE POLICY "${label} insert" ON "${table}" FOR INSERT WITH CHECK (${compare});\n`;
+            sql += `CREATE POLICY "${label} update" ON "${table}" FOR UPDATE USING (${compare});\n`;
+            sql += `CREATE POLICY "${label} delete" ON "${table}" FOR DELETE USING (${compare});\n\n`;
         }
         else {
             sql += `-- No owner column detected on "${table}" — add custom policies here.\n\n`;

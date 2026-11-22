@@ -13,10 +13,10 @@ program
   .description('Generate Supabase migrations from schema.prisma')
   .option('-s, --schema <path>', 'Path to schema.prisma', './prisma/schema.prisma')
   .option('-o, --output <dir>', 'Output directory', './supabase/migrations')
-  .option('--rls', 'Generate RLS policies', true)
-  .option('--realtime', 'Generate Realtime publication setup', true)
-  .option('--auth', 'Generate Auth integration helpers', true)
-  .option('--types', 'Generate TypeScript types', true)
+  .option('--no-rls', 'Skip RLS policies')
+  .option('--no-realtime', 'Skip Realtime publication setup')
+  .option('--no-auth', 'Skip Auth integration helpers')
+  .option('--no-types', 'Skip TypeScript types')
   .action(async (options) => {
     try {
       console.log(chalk.green('🚀 Generating Supabase migrations...'));

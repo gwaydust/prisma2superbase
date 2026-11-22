@@ -50,7 +50,32 @@ prisma-to-supabase/
 - Runs locally (no cloud dependency)
 - Open-core: CLI free, premium templates/templates paid
 
+## Install & Usage
+
+```bash
+npm install -g prisma-to-supabase
+cd your-prisma-project
+npx prisma-to-supabase generate
+```
+
+Reads `./prisma/schema.prisma` by default and writes to `./supabase/migrations/` plus `./supabase/types/database.ts`.
+
+| Option | Default | Purpose |
+|--------|---------|---------|
+| `-s, --schema <path>` | `./prisma/schema.prisma` | Prisma schema to read |
+| `-o, --output <dir>` | `./supabase/migrations` | Migration output directory |
+| `--no-rls` | RLS on | Skip RLS policies |
+| `--no-realtime` | Realtime on | Skip Realtime publication setup |
+| `--no-auth` | Auth on | Skip Auth helper functions |
+| `--no-types` | Types on | Skip TypeScript types |
+
+Apply the generated SQL with the Supabase CLI:
+
+```bash
+supabase db push
+```
+
 ## Repository
-- **GitHub:** https://github.com/chiwai/prisma2superbase
-- **Landing Page:** https://chiwai.github.io/prisma2superbase/
-- **Issues:** https://github.com/chiwai/prisma2superbase/issues
+- **GitHub:** https://github.com/gwaydust/prisma2superbase
+- **Landing Page:** https://gwaydust.github.io/prisma2superbase/
+- **Issues:** https://github.com/gwaydust/prisma2superbase/issues

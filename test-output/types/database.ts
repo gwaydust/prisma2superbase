@@ -4,47 +4,47 @@
 export interface User {
   id: string;
   email: string;
-  name?: unknown;
-  posts: unknown[];
-  profile?: unknown;
+  name?: string;
   createdAt: Date;
   updatedAt: Date;
+  posts: Post[];
+  profile: Profile;
 }
 
 export interface Profile {
   id: string;
-  user: unknown;
   userId: string;
-  bio?: unknown;
-  avatar?: unknown;
+  bio?: string;
+  avatar?: string;
+  user: User;
 }
 
 export interface Post {
   id: string;
   title: string;
-  content?: unknown;
+  content?: string;
   published: boolean;
-  author: unknown;
   authorId: string;
-  tags: unknown[];
   createdAt: Date;
   updatedAt: Date;
+  author: User;
+  tags: Tag[];
 }
 
 export interface Tag {
   id: string;
   name: string;
-  posts: unknown[];
+  posts: Post[];
 }
 
 export interface Comment {
   id: string;
   content: string;
-  post: unknown;
   postId: string;
-  author: unknown;
   authorId: string;
   createdAt: Date;
+  post: Post;
+  author: User;
 }
 
 export interface Database {
@@ -52,27 +52,27 @@ export interface Database {
     Tables: {
       user: {
         Row: User;
-        Insert: Omit<User, 'id' | 'createdAt' | 'updatedAt'>;
+        Insert: Omit<User, 'id'>;
         Update: Partial<User>;
       };
       profile: {
         Row: Profile;
-        Insert: Omit<Profile, 'id' | 'createdAt' | 'updatedAt'>;
+        Insert: Omit<Profile, 'id'>;
         Update: Partial<Profile>;
       };
       post: {
         Row: Post;
-        Insert: Omit<Post, 'id' | 'createdAt' | 'updatedAt'>;
+        Insert: Omit<Post, 'id'>;
         Update: Partial<Post>;
       };
       tag: {
         Row: Tag;
-        Insert: Omit<Tag, 'id' | 'createdAt' | 'updatedAt'>;
+        Insert: Omit<Tag, 'id'>;
         Update: Partial<Tag>;
       };
       comment: {
         Row: Comment;
-        Insert: Omit<Comment, 'id' | 'createdAt' | 'updatedAt'>;
+        Insert: Omit<Comment, 'id'>;
         Update: Partial<Comment>;
       };
     };
