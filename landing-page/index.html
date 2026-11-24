@@ -267,7 +267,7 @@ export interface Database {
 <footer>
     <p>Built for the Prisma &amp; Supabase community</p>
     <!-- TODO: add Privacy and Terms pages before taking payments -->
-    <p><a href="https://github.com/gwaydust/prisma2superbase/issues">Contact / Issues</a> &middot; <a href="https://github.com/gwaydust/prisma2superbase">Source</a></p>
+    <p><a href="mailto:support@waisway.com">support@waisway.com</a> &middot; <a href="https://github.com/gwaydust/prisma2superbase/issues">Issues</a> &middot; <a href="https://github.com/gwaydust/prisma2superbase">Source</a></p>
 </footer>
 
 </div>
@@ -280,11 +280,12 @@ var WAITLIST_ENDPOINT = '';
 var WAITLIST_KEY = '';
 
 // Creem payment link — copy it from the Creem dashboard (product → Share →
-// copy link). Format: https://www.creem.io/payment/prod_...
-// Creem has no @handle route, so a creem.io/@yourstore URL will always 404.
-// Leave empty to keep the waitlist CTA. Fill it in and both primary buttons
-// switch to the live checkout.
-var CREEM_PRODUCT_URL = '';
+// copy link). Creem has no @handle route, so a creem.io/@yourstore URL will
+// always 404.
+// WARNING: this is a TEST-MODE link (/test/payment/...). It only completes test
+// purchases. Swap it for the production link (https://www.creem.io/payment/...)
+// BEFORE sending any real traffic here.
+var CREEM_PRODUCT_URL = 'https://www.creem.io/test/payment/prod_63u8CQkye7cTSWGIn1DTPN';
 
 if (CREEM_PRODUCT_URL) {
     document.querySelectorAll('a[href="#waitlist"].btn-primary').forEach(function (a) {
